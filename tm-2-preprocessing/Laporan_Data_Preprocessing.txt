@@ -1,0 +1,138 @@
+LAPORAN DATA PREPROCESSING DATASET WINEQT
+==========================================
+
+PENDAHULUAN
+-----------
+Laporan ini menjelaskan proses data preprocessing yang dilakukan pada dataset WineQT untuk
+memastikan kualitas data sebelum digunakan dalam analisis lebih lanjut atau pembangunan model
+machine learning. Dataset WineQT berisi data kualitas wine dengan 1143 baris dan 13 kolom yang
+mencakup berbagai parameter kimia dan sensorik.
+
+Proses preprocessing mencakup dua tahap utama: penanganan missing values dan penanganan outliers,
+yang keduanya merupakan langkah kritis dalam menjamin integritas dan kualitas data untuk analisis
+yang akurat dan reliable.
+
+
+STEP 1: LOADING DAN EKSPLORASI AWAL DATASET
+-------------------------------------------
+Langkah pertama dalam preprocessing adalah memuat dataset WineQT dari file CSV menggunakan library
+Polars. Dataset ini memiliki dimensi 1143 baris dengan 13 kolom yang berisi parameter seperti fixed
+acidity, volatile acidity, citric acid, residual sugar, chlorides, free sulfur dioxide, total sulfur
+dioxide, density, pH, sulphates, alcohol, quality, dan Id. Pada tahap ini, dilakukan juga inspeksi
+awal dengan menampilkan 5 baris pertama untuk memahami struktur data dan tipe data dari setiap kolom.
+
+Pemahaman terhadap struktur dataset ini sangat penting sebagai fondasi untuk langkah-langkah
+preprocessing selanjutnya. Dari eksplorasi awal, diketahui bahwa dataset memiliki kombinasi atribut
+numerik yang mewakili berbagai karakteristik kimiawi dan sensorik dari wine, dengan kolom quality
+sebagai target yang menunjukkan penilaian kualitas wine. Tujuan dari langkah ini adalah untuk
+memastikan data berhasil dimuat dengan baik dan untuk mendapatkan pemahaman awal mengenai
+karakteristik dasar dari dataset yang akan dianalisis.
+
+
+STEP 2: PENGECEKAN MISSING VALUES
+---------------------------------
+Setelah dataset dimuat, langkah berikutnya adalah melakukan pemeriksaan menyeluruh terhadap keberadaan
+missing values atau data yang hilang. Missing values dapat mengganggu analisis dan menyebabkan bias
+dalam hasil jika tidak ditangani dengan tepat. Pada tahap ini, digunakan fungsi null_count() dari Polars
+untuk menghitung jumlah missing values pada setiap kolom. Hasil pemeriksaan menunjukkan bahwa dataset
+WineQT tidak memiliki missing values sama sekali pada semua 13 kolomnya, yang mengindikasikan bahwa
+data sudah lengkap dan bersih dari sisi kelengkapan data.
+
+Ketidakhadiran missing values dalam dataset ini merupakan kondisi yang ideal karena menyederhanakan
+proses preprocessing dan mengurangi risiko bias yang mungkin timbul dari imputasi data. Namun demikian,
+sebagai bagian dari praktik preprocessing yang komprehensif, tetap dilakukan simulasi berbagai metode
+penanganan missing values sebagai persiapan untuk kemungkinan kasus di mana missing values mungkin
+ada di dataset lain atau dalam pembaruan data di masa depan. Hasil pemeriksaan ini memberikan keyakinan
+awal bahwa data memiliki kualitas yang baik dari perspektif kelengkapan.
+
+
+STEP 3: PENANGANAN MISSING VALUES DENGAN BERBAGAI METODE
+----------------------------------------------------------
+Meskipun dataset WineQT tidak memiliki missing values, sebagai bagian dari proses preprocessing yang
+komprehensif, tetap diimplementasikan dan diuji berbagai metode penanganan missing values. Metode
+pertama adalah penghapusan baris yang mengandung missing values (drop_nulls), yang menghasilkan
+dataset dengan shape yang sama (1143, 13) karena tidak ada baris yang dihapus. Metode ini efektif
+ketika proporsi missing values sangat kecil dan data yang dihapus tidak mengganggu representativitas
+dataset secara signifikan. Hasilnya adalah dataset yang bersih namun berpotensi kehilangan informasi
+jika missing values tersebar luas.
+
+Metode kedua adalah pengisian missing values dengan mean (rata-rata) dari setiap kolom numerik.
+Pendekatan ini menggantikan setiap missing value dengan rata-rata dari kolom tersebut, yang cocok
+untuk data yang terdistribusi normal. Metode ketiga menggunakan median sebagai pengganti, yang
+lebih robust terhadap outliers dibandingkan mean dan cocok untuk data yang tidak terdistribusi
+normal. Metode keempat adalah penggunaan modus (nilai yang paling sering muncul), yang cocok untuk
+data kategorikal atau numerik dengan distribusi yang sangat skewed. Dalam implementasi ini, semua metode
+menghasilkan dataset dengan shape yang sama karena tidak ada missing values yang sebenarnya, namun
+metode-metode ini siap digunakan untuk dataset lain yang mungkin memiliki missing values.
+
+
+STEP 4: DETEKSI OUTLIER MENGGUNAKAN METODE IQR (BOXPLOT)
+--------------------------------------------------------
+Tahap keempat dalam proses preprocessing adalah deteksi outlier menggunakan metode Interquartile
+Range (IQR) yang merupakan dasar dari boxplot method. Metode ini menghitung Q1 (kuartil pertama atau
+25th percentile) dan Q3 (kuartil ketiga atau 75th percentile) untuk setiap kolom numerik, kemudian
+menghitung IQR sebagai selisih antara Q3 dan Q1. Batas-batas untuk mendeteksi outlier ditentukan
+sebagai lower bound = Q1 - 1.5 × IQR dan upper bound = Q3 + 1.5 × IQR. Nilai yang berada di luar
+batas ini dikategorikan sebagai outlier yang potensial dan perlu ditangani.
+
+Hasil deteksi menunjukkan bahwa dari 12 kolom numerik dalam dataset (semua kolom kecuali Id), ditemukan
+total 443 outliers yang tersebar di berbagai kolom. Kolom 'residual sugar' memiliki jumlah outlier
+terbanyak yaitu 110, diikuti oleh 'chlorides' dengan 77 outlier, dan 'fixed acidity' dengan 44
+outlier. Kolom lain seperti 'total sulfur dioxide', 'density', 'sulphates', dan 'free sulfur dioxide'
+juga memiliki outlier yang signifikan. Deteksi ini penting karena outlier dapat secara signifikan
+mempengaruhi hasil analisis statistik dan performa model machine learning, terutama metode-metode
+yang sensitif terhadap nilai ekstrem seperti regresi linear atau neural networks.
+
+
+STEP 5: PENANGANAN OUTLIER DENGAN CAPPING/WINSORIZATION
+-------------------------------------------------------
+Setelah outlier terdeteksi, langkah berikutnya adalah menangani outlier tersebut menggunakan metode
+capping atau winsorization. Metode ini tidak menghapus outlier sepenuhnya, melainkan mengganti
+nilai-nilai yang berada di luar batas IQR dengan nilai batas itu sendiri. Nilai yang lebih kecil
+dari lower bound akan diganti dengan lower bound, sedangkan nilai yang lebih besar dari upper bound
+akan diganti dengan upper bound. Pendekatan ini mempertahankan jumlah observasi dalam dataset sekaligus
+mengurangi dampak negatif dari nilai ekstrem.
+
+Implementasi capping dilakukan secara sistematis untuk setiap kolom numerik. Hasilnya, semua 443
+outlier yang terdeteksi berhasil dihandle sepenuhnya, sehingga tidak ada outlier yang tersisa dalam
+dataset setelah proses ini. Perbandingan statistik sebelum dan sesudah handling menunjukkan bahwa
+nilai maksimum dan minimum telah disesuaikan sesuai batas IQR, sementara nilai rata-rata tetap
+relatif stabil, mengindikasikan bahwa distribusi pusat data tidak berubah secara signifikan. Sebagai
+contoh, untuk kolom 'fixed acidity', nilai maksimum berubah dari 15.90 menjadi 12.10 (sesuai upper
+bound), namun mean hanya berubah sedikit dari 8.31 menjadi 8.27.
+
+
+STEP 6: VERIFIKASI DAN ANALISIS HASIL PREPROCESSING
+---------------------------------------------------
+Tahap terakhir dalam proses preprocessing adalah verifikasi dan analisis hasil untuk memastikan
+bahwa semua langkah preprocessing telah berhasil dilakukan dan data siap untuk analisis lebih lanjut.
+Verifikasi dilakukan dengan membandingkan statistik deskriptif sebelum dan sesudah penanganan outlier,
+termasuk nilai minimum, maksimum, dan rata-rata untuk setiap kolom. Hasil verifikasi menunjukkan
+bahwa proses preprocessing berjalan successful: tidak ada missing values yang tersisa, dan semua 443
+outlier telah berhasil ditangani tanpa mengurangi jumlah observasi dalam dataset.
+
+Dari perspektif kualitas data, dataset WineQT yang telah dipreprocessing memiliki karakteristik yang
+jauh lebih baik untuk analisis dan pemodelan. Distribusi data lebih terkontrol tanpa nilai-nilai
+ekstrem yang dapat mendistorsi hasil analisis, sementara kelengkapan data tetap terjaga dengan
+1143 observasi dan 13 variabel. Shape dataset akhir tetap (1143, 13), yang mengindikasikan bahwa
+tidak ada kehilangan data selama proses preprocessing. Dataset ini sekarang siap digunakan untuk
+analisis eksplorasi data (EDA), feature engineering, atau pembangunan model machine learning dengan
+tingkat kepercayaan yang lebih tinggi terhadap kualitas dan integritas data.
+
+
+KESIMPULAN
+----------
+Proses data preprocessing pada dataset WineQT telah berhasil dilaksanakan secara komprehensif,
+mencakup pengecekan dan penanganan missing values serta deteksi dan penanganan outlier menggunakan
+metode IQR dan capping. Dataset awal yang sudah bersih dari missing values mendapat perlakuan
+lanjutan untuk menangani 443 outliers yang tersebar di berbagai kolom numerik. Hasil akhirnya adalah
+dataset yang lebih bersih, terkontrol, dan siap untuk analisis lanjutan dengan kualitas data yang
+lebih baik.
+
+Metode-metode yang diimplementasikan seperti drop_nulls, fill with mean/median/mode untuk missing
+values, serta IQR detection dan capping untuk outlier handling, merupakan teknik preprocessing yang
+umum dan efektif dalam menjamin kualitas data. Proses preprocessing ini tidak hanya meningkatkan
+kualitas data, tetapi juga memberikan pemahaman yang lebih mendalam mengenai karakteristik dataset,
+yang sangat berharga untuk analisis dan pemodelan selanjutnya. Dataset WineQT yang telah
+dipreprocessing siap digunakan untuk tahap analisis berikutnya dalam pipeline machine learning atau
+analisis data.
