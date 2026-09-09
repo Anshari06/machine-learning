@@ -113,7 +113,7 @@ print(f"\nTotal outliers di semua kolom numerik: {total_outliers_count}")
 print("\nKeputusan: Outlier tidak akan dihapus dari dataset karena masih batas normal.")
 
 print("\n" + "=" * 50)
-print("STANDARDISASI & NORMALISASI")
+print("STANDARDISASI")
 print("=" * 50)
 
 # cek nilai unik pada kolom "Education Level" sebelum dan sesudah normalisasi
@@ -186,3 +186,55 @@ for col in categorical_cols:
     else:
         print(f"-> p >= {alpha}: '{col}' TIDAK berhubungan signifikan dengan Salary (kandidat DIBUANG)")
         
+
+# Seleksi Fitur numerikal dengan ANOVA
+# ANOVA dipilih karena fitur dikelompokkan menjadi 4 kuartil (>2 kelompok);
+# t-test hanya mampu membandingkan 2 kelompok.
+from scipy.stats import f_oneway
+
+print("\n" + "=" * 50)
+print("SELEKSI FITUR NUMERIKAL DENGAN ANOVA")
+print("=" * 50)
+
+anova_results = {}
+for col in ["Age", "Years of Experience"]:
+    q1, q2, q3 = [df_clean[col].quantile(i / 4) for i in range(1, 4)]
+
+    df_binned = df_clean.with_columns(
+        pl.when(pl.col(col) <= q1).then(pl.lit("Q1"))
+        .when(pl.col(col) <= q2).then(pl.lit("Q2"))
+        .when(pl.col(col) <= q3).then(pl.lit("Q3"))
+        .otherwise(pl.lit("Q4"))
+        .alias("_bin")
+    )
+
+    # kumpulkan nilai Salary per kelompok kuartil
+    groups = (
+        df_binned.group_by("_bin", maintain_order=True)
+        .agg(pl.col("Salary"))
+        .get_column("Salary")
+        .to_list()
+    )
+
+    f_stat, p = f_oneway(*groups)
+    anova_results[col] = (f_stat, p)
+
+    print(f"\nKolom: {col}")
+    print(f"Pembagian kuartil: Q1 <= {q1}, Q2 <= {q2}, Q3 <= {q3}, sisanya Q4")
+    for name, vals in zip(["Q1", "Q2", "Q3", "Q4"], groups):
+        print(f"  Rata-rata Salary {name}: {sum(vals) / len(vals):,.2f} (n={len(vals)})")
+    print(f"F-Statistic : {f_stat:.4f}")
+    print(f"P-Value     : {p:.6f}")
+    if p < alpha:
+        print(f"-> p < {alpha}: '{col}' berpengaruh signifikan terhadap Salary (fitur DIPERTAHANKAN)")
+    else:
+        print(f"-> p >= {alpha}: '{col}' TIDAK berpengaruh signifikan terhadap Salary (kandidat DIBUANG)")
+
+# Ringkasan hasil seleksi fitur
+print("\n" + "=" * 50)
+print("RINGKASAN HASIL SELEKSI FITUR")
+print("=" * 50)
+for col, (chi2, p) in chi_square_results.items():
+    print(f"[Chi-Square] {col:<25} chi2={chi2:.4f}  p={p:.6f}  -> {'KEEP' if p < alpha else 'DROP'}")
+for col, (f_stat, p) in anova_results.items():
+    print(f"[ANOVA]      {col:<25} F={f_stat:.4f}  p={p:.6f}  -> {'KEEP' if p < alpha else 'DROP'}")
